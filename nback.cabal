@@ -1,0 +1,111 @@
+cabal-version:       2.0
+name:                nback
+version:             0.1.0
+synopsis:            See README for more info
+description:         See README for more info
+license:             MIT
+license-file:        LICENSE
+author:              Konstantinos Sideris
+maintainer:          siderisk@auth.gr
+copyright:           2019 Konstantinos Sideris
+category:            Game
+build-type:          Simple
+extra-doc-files:     README.md
+                   , CHANGELOG.md
+tested-with:         GHC == 8.6.5
+
+executable nback
+  hs-source-dirs:      app
+  other-modules:       Paths_nback
+  main-is:             Main.hs
+
+  build-depends:       base ^>= 4.12.0.0
+                     , aeson
+                     , brick
+                     , bytestring
+                     , containers
+                     , directory
+                     , microlens
+                     , microlens-th
+                     , nback
+                     , optparse-applicative
+                     , time
+                     , vty
+
+  ghc-options:         -Wall
+                       -Wno-type-defaults
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wcompat
+                       -Widentities
+                       -Wredundant-constraints
+                       -fhide-source-paths
+                       -Wmissing-export-lists
+                       -Wpartial-fields
+
+  default-language:    Haskell2010
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+                       State
+                     , Constants
+                     , Audio
+
+  build-depends:       base ^>= 4.12.0.0
+                     , aeson
+                     , brick
+                     , bytestring
+                     , containers
+                     , directory
+                     , file-embed
+                     , microlens
+                     , microlens-th
+                     , proteaaudio
+                     , random
+                     , random-shuffle
+                     , time
+                     , vty
+
+
+  ghc-options:         -Wall
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wcompat
+                       -Widentities
+                       -Wredundant-constraints
+                       -fhide-source-paths
+                       -Wmissing-export-lists
+                       -Wpartial-fields
+
+  default-language:    Haskell2010
+
+
+test-suite nback-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+
+  build-depends:       base ^>= 4.12.0.0
+                     , nback
+                     , tasty
+                     , tasty-hspec
+                     , containers
+
+  ghc-options:         -Wall
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+                       -Wincomplete-uni-patterns
+                       -Wincomplete-record-updates
+                       -Wcompat
+                       -Widentities
+                       -Wredundant-constraints
+                       -fhide-source-paths
+                       -Wmissing-export-lists
+                       -Wpartial-fields
+
+  default-language:    Haskell2010

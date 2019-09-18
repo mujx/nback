@@ -1,0 +1,11 @@
+resolver: nightly-2019-09-17
+
+packages:
+- ./
+
+extra-deps:
+- proteaaudio-0.7.1.0
+
+nix:
+  packages:
+  - zlib
