@@ -35,52 +35,57 @@ import Graphics.Vty (black, blue, defaultConfig, green, mkVty, red, white, yello
 import qualified Graphics.Vty as V
 import Lens.Micro
 import Lens.Micro.TH (makeLenses)
+import Numeric (showFFloat)
 import qualified Options.Applicative as Opt
 import Options.Applicative ((<**>))
 import Paths_nback (version)
 import State
   ( Answer (..),
     Game (..),
-    MistakeReport (..),
     Screen (..),
     StatsLine (..),
+    calcPerf,
     createGame,
     decideNextLevel,
     getMistakes,
+    initReport,
   )
 import System.Directory
 
 makeLenses ''Game
 
+showScore :: Float -> String -> String
+showScore = showFFloat (Just 2)
+
 drawUI :: Game -> [Widget ()]
 drawUI g =
-  [ C.center
-      $ Core.vBox
-          [ drawMain g,
-            Core.padTop (T.Pad 1) (Core.hBox [drawLevelInfo g, drawControls])
-          ]
+  [ C.center $
+      Core.vBox
+        [ drawMain g,
+          Core.padTop (T.Pad 1) (Core.hBox [drawLevelInfo g, drawControls])
+        ]
   ]
 
 drawLevelInfo :: Game -> Widget ()
 drawLevelInfo g =
-  Core.padLeft (T.Pad 1)
-    $ Core.vBox
-        [ Core.str ("Level: " <> show (g ^. level)),
-          Core.str
-            ( "Block: "
-                <> show (g ^. block)
-                <> "/"
-                <> show (length $ g ^. auditory)
-            )
-        ]
+  Core.padLeft (T.Pad 1) $
+    Core.vBox
+      [ Core.str ("Level: " <> show (g ^. level)),
+        Core.str
+          ( "Block: "
+              <> show (g ^. block)
+              <> "/"
+              <> show (length $ g ^. auditory)
+          )
+      ]
 
 drawControls :: Widget Name
 drawControls =
-  C.hCenter
-    $ Core.vBox
-        [ Core.txt "Audio:  A",
-          Core.txt "Visual: L"
-        ]
+  C.hCenter $
+    Core.vBox
+      [ Core.txt "Audio:  A",
+        Core.txt "Visual: L"
+      ]
 
 drawMain :: Game -> Widget ()
 drawMain g =
@@ -98,8 +103,8 @@ pastTrials g =
         $ B.borderWithLabel (Core.txt " Recent trials (24h)")
         $ Core.padAll 1
         $ Core.vBox
-            [ Core.padTopBottom 1
-                $ Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
+            [ Core.padTopBottom 1 $
+                Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
             ]
   where
     space = " "
@@ -119,9 +124,9 @@ pastTrials g =
             <> ": L"
             <> show (statsLevel v)
             <> space
-            <> ("Audio (" <> show (auditoryMistakes (statsReport v)) <> ")")
-            <> space
-            <> ("Visual (" <> show (visualMistakes (statsReport v)) <> ")")
+            <> ("Audio: " <> showScore (fst $ calcPerf (statsReport v)) "%")
+            <> ", "
+            <> ("Visual: " <> showScore (snd $ calcPerf (statsReport v)) "%")
             <> space
         )
 
@@ -133,31 +138,29 @@ drawInterlude g =
         $ Core.padAll 1
         $ Core.vBox
         $ reportLines
-          <> [ Core.padTopBottom 1
-                 $ Core.vBox
-                     [ Core.str $ "Next level: " <> show (g ^. level),
-                       Core.str "Press <SPACE> to continue"
-                     ]
+          <> [ Core.padTopBottom 1 $
+                 Core.vBox
+                   [ Core.str $ "Next level: " <> show (g ^. level),
+                     Core.str "Press <SPACE> to continue"
+                   ]
              ],
       pastTrials g
     ]
   where
-    visualErrors :: Int
-    visualErrors = visualMistakes (g ^. lastReport)
-    auditoryErrors :: Int
-    auditoryErrors = auditoryMistakes (g ^. lastReport)
+    perf :: (Float, Float)
+    perf = calcPerf (g ^. lastReport)
     title :: Widget ()
     title =
-      if visualErrors == -1 && auditoryErrors == -1
+      if (g ^. lastReport) == initReport
         then Core.txt " Trial "
         else Core.txt " End of Trial "
     reportLines :: [Widget ()]
     reportLines =
-      if visualErrors == -1 && auditoryErrors == -1
+      if (g ^. lastReport) == initReport
         then []
         else
-          [ Core.str $ "Visual errors:   " <> show visualErrors,
-            Core.str $ "Auditory errors: " <> show auditoryErrors
+          [ Core.str $ "Audio: " <> showScore (fst perf) "%",
+            Core.str $ "Visual: " <> showScore (snd perf) "%"
           ]
 
 drawGrid :: Game -> Widget ()
@@ -172,7 +175,6 @@ drawGrid g =
       Core.hBox [drawGridCell (5 + x) active draw | x <- [0 .. 2]]
     ]
   where
-    -- | The index of the active cell.
     active :: Int
     active =
       if g ^. block < Map.size (g ^. visuals)
@@ -181,18 +183,17 @@ drawGrid g =
             (error "failed at drawGrid")
             (Map.lookup (g ^. block) (g ^. visuals))
         else -1
-    -- | Whether we can draw the active cell.
     draw :: Bool
     draw = g ^. isActive
 
-drawGridCell
-  :: Int
-  -- ^ The index of the block we're currently rendering.
-  -> Int
-  -- ^ The index of the active block
-  -> Bool
-  -- ^ Whether we are in a stimulus phase.
-  -> Widget ()
+drawGridCell ::
+  -- | The index of the block we're currently rendering.
+  Int ->
+  -- | The index of the active block
+  Int ->
+  -- | Whether we are in a stimulus phase.
+  Bool ->
+  Widget ()
 drawGridCell (-1) _ _ = drawCentralCell
 drawGridCell idx activeIdx drawActive =
   if idx == activeIdx && drawActive

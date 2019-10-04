@@ -7,11 +7,14 @@ module State
     Answer (..),
     Screen (..),
     StatsLine (..),
+    initReport,
+    calcPerf,
     chooseItems,
     generateSeqs,
     getMistakes,
     findAnswers,
     findMatches,
+    findMistakes,
     fixMatches,
     decideNextLevel,
     createGame,
@@ -46,11 +49,9 @@ data Answer
 
 instance Semigroup Answer where
   AuditoryMatch <> AuditoryMatch = AuditoryMatch
-  AuditoryMatch <> VisualMatch = BothMatches
-  AuditoryMatch <> BothMatches = BothMatches
   VisualMatch <> VisualMatch = VisualMatch
-  VisualMatch <> AuditoryMatch = BothMatches
-  VisualMatch <> BothMatches = BothMatches
+  AuditoryMatch <> _ = BothMatches
+  VisualMatch <> _ = BothMatches
   _ <> _ = BothMatches
 
 data StatsLine
@@ -78,21 +79,88 @@ instance FromJSON StatsLine where
 
 data MistakeReport
   = MistakeReport
-      { visualMistakes :: Int,
-        auditoryMistakes :: Int
+      { _vTP :: Float,
+        _vTN :: Float,
+        _vFP :: Float,
+        _vFN :: Float,
+        _aTP :: Float,
+        _aTN :: Float,
+        _aFP :: Float,
+        _aFN :: Float
       }
   deriving (Eq, Show)
+
+initReport :: MistakeReport
+initReport = MistakeReport
+  { _vTP = -1,
+    _vTN = -1,
+    _vFP = -1,
+    _vFN = -1,
+    _aTP = -1,
+    _aTN = -1,
+    _aFP = -1,
+    _aFN = -1
+  }
+
+audioTP, audioTN, audioFP, audioFN :: MistakeReport
+audioTP = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 0, _vFN = 0, _aTP = 1, _aTN = 0, _aFP = 0, _aFN = 0}
+audioTN = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 0, _vFN = 0, _aTP = 0, _aTN = 1, _aFP = 0, _aFN = 0}
+audioFP = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 0, _vFN = 0, _aTP = 0, _aTN = 0, _aFP = 1, _aFN = 0}
+audioFN = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 0, _vFN = 0, _aTP = 0, _aTN = 0, _aFP = 0, _aFN = 1}
+
+visualTP, visualTN, visualFP, visualFN :: MistakeReport
+visualTP = MistakeReport {_vTP = 1, _vTN = 0, _vFP = 0, _vFN = 0, _aTP = 0, _aTN = 0, _aFP = 0, _aFN = 0}
+visualTN = MistakeReport {_vTP = 0, _vTN = 1, _vFP = 0, _vFN = 0, _aTP = 0, _aTN = 0, _aFP = 0, _aFN = 0}
+visualFP = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 1, _vFN = 0, _aTP = 0, _aTN = 0, _aFP = 0, _aFN = 0}
+visualFN = MistakeReport {_vTP = 0, _vTN = 0, _vFP = 0, _vFN = 1, _aTP = 0, _aTN = 0, _aFP = 0, _aFN = 0}
+
+calcPerf :: MistakeReport -> (Float, Float)
+calcPerf report = (audioPerf, visualPerf)
+  where
+    audioPerf = ((_aTP report + _aTN report) * 100) / (_aTP report + _aTN report + _aFP report + _aFN report)
+    visualPerf = ((_vTP report + _vTN report) * 100) / (_vTP report + _vTN report + _vFP report + _vFN report)
+
+decideNextLevel :: Int -> MistakeReport -> Int
+decideNextLevel lvl report
+  | aPerf >= upLim && vPerf >= upLim = lvl + 1
+  | aPerf <= lowLim || vPerf <= lowLim = max (lvl - 1) 2
+  | otherwise = lvl
+  where
+    upLim = 90
+    lowLim = 70
+    (aPerf, vPerf) = calcPerf report
 
 deriveJSON defaultOptions ''MistakeReport
 
 instance Semigroup MistakeReport where
   a <> b = MistakeReport
-    { visualMistakes = visualMistakes a + visualMistakes b,
-      auditoryMistakes = auditoryMistakes a + auditoryMistakes b
+    { --
+      -- Visual
+      --
+      _vTP = _vTP a + _vTP b,
+      _vTN = _vTN a + _vTN b,
+      _vFP = _vFP a + _vFP b,
+      _vFN = _vFN a + _vFN b,
+      --
+      -- Audio
+      --
+      _aTP = _aTP a + _aTP b,
+      _aTN = _aTN a + _aTN b,
+      _aFP = _aFP a + _aFP b,
+      _aFN = _aFN a + _aFN b
     }
 
 instance Monoid MistakeReport where
-  mempty = MistakeReport {visualMistakes = 0, auditoryMistakes = 0}
+  mempty = MistakeReport
+    { _vTP = 0,
+      _vTN = 0,
+      _vFP = 0,
+      _vFN = 0,
+      _aTP = 0,
+      _aTN = 0,
+      _aFP = 0,
+      _aFN = 0
+    }
 
 data Screen
   = GameScreen
@@ -104,59 +172,72 @@ data Screen
 
 data Game
   = Game
-      { _visuals :: Map.Map Int Int,
-        -- ^ The visual sequence choosen for the current trial.
+      { -- | The visual sequence choosen for the current trial.
+        _visuals :: Map.Map Int Int,
+        -- | The sound sequence choosen for the current trial.
         _auditory :: Map.Map Int Int,
-        -- ^ The sound sequence choosen for the current trial.
+        -- | The answers given through out the trial.
         _answers :: Map.Map Int (Maybe Answer),
-        -- ^ The answers given through out the trial.
+        -- | Current block in a trial.
         _block :: Int,
-        -- ^ Current block in a trial.
+        -- | The value of N in n-back.
         _level :: Int,
-        -- ^ The value of N in n-back.
+        -- | The answer given by the user. Nothing if there was no input.
         _answer :: Maybe Answer,
-        -- ^ The answer given by the user. Nothing if there was no input.
+        -- | The UI that will be shown.
         _screen :: Screen,
-        -- ^ The UI that will be shown.
+        -- | Whether the current stimulus must be visible.
         _isActive :: Bool,
-        -- ^ Whether the current stimulus must be visible.
+        -- | Whether the trial has ended.
         _end :: Bool,
-        -- ^ Whether the trial has ended.
+        -- | Available sounds to be played.
         _sounds :: Map.Map Int SoundFile,
-        -- ^ Available sounds to be played.
+        -- | The report of the previous trial
         _lastReport :: MistakeReport,
-        -- ^ The report of the previous trial
+        -- | A file to save the results after each trial.
         _statsFile :: FilePath,
-        -- ^ A file to save the results after each trial.
+        -- | Statistics loaded.
         _stats :: [StatsLine]
-        -- ^ Statistics loaded.
       }
   deriving (Show)
 
 makeLenses ''Game
 
-decideNextLevel :: Int -> MistakeReport -> Int
-decideNextLevel lvl report
-  | visualMistakes report < 3 && auditoryMistakes report < 3 = lvl + 1
-  | totalMistakes > 5 = max 2 (lvl - 1)
-  | otherwise = lvl
-  where
-    totalMistakes = visualMistakes report + auditoryMistakes report
-
-compareAnswers :: Maybe Answer -> Maybe Answer -> MistakeReport
-compareAnswers (Just AuditoryMatch) (Just VisualMatch) = MistakeReport {visualMistakes = 0, auditoryMistakes = 1}
-compareAnswers (Just AuditoryMatch) (Just BothMatches) = MistakeReport {visualMistakes = 0, auditoryMistakes = 1}
-compareAnswers (Just AuditoryMatch) Nothing = MistakeReport {visualMistakes = 0, auditoryMistakes = 1}
-compareAnswers (Just VisualMatch) (Just AuditoryMatch) = MistakeReport {visualMistakes = 1, auditoryMistakes = 0}
-compareAnswers (Just VisualMatch) (Just BothMatches) = MistakeReport {visualMistakes = 1, auditoryMistakes = 0}
-compareAnswers (Just VisualMatch) Nothing = MistakeReport {visualMistakes = 1, auditoryMistakes = 0}
-compareAnswers (Just BothMatches) (Just AuditoryMatch) = MistakeReport {visualMistakes = 1, auditoryMistakes = 0}
-compareAnswers (Just BothMatches) (Just VisualMatch) = MistakeReport {visualMistakes = 0, auditoryMistakes = 1}
-compareAnswers (Just BothMatches) Nothing = MistakeReport {visualMistakes = 1, auditoryMistakes = 1}
-compareAnswers Nothing (Just AuditoryMatch) = MistakeReport {visualMistakes = 0, auditoryMistakes = 1}
-compareAnswers Nothing (Just VisualMatch) = MistakeReport {visualMistakes = 1, auditoryMistakes = 0}
-compareAnswers Nothing (Just BothMatches) = MistakeReport {visualMistakes = 1, auditoryMistakes = 1}
-compareAnswers _ _ = MistakeReport {visualMistakes = 0, auditoryMistakes = 0}
+compareAnswers ::
+  Maybe Answer ->
+  -- | ^ The correct answer.
+  Maybe Answer ->
+  -- | ^ The user provided answer.
+  MistakeReport
+compareAnswers correct guess = case (correct, guess) of
+  --
+  -- Audio
+  --
+  (Just AuditoryMatch, Just VisualMatch) -> audioFN <> visualFP
+  (Just AuditoryMatch, Just AuditoryMatch) -> audioTP <> visualTN
+  (Just AuditoryMatch, Just BothMatches) -> audioTP <> visualFP
+  (Just AuditoryMatch, Nothing) -> audioFN <> visualTN
+  --
+  -- Visual
+  --
+  (Just VisualMatch, Just VisualMatch) -> audioTN <> visualTP
+  (Just VisualMatch, Just AuditoryMatch) -> audioFP <> visualTN
+  (Just VisualMatch, Just BothMatches) -> audioFP <> visualTP
+  (Just VisualMatch, Nothing) -> audioTN <> visualFN
+  --
+  -- Audio & Visual
+  --
+  (Just BothMatches, Just VisualMatch) -> audioFN <> visualTP
+  (Just BothMatches, Just AuditoryMatch) -> audioTP <> visualFN
+  (Just BothMatches, Just BothMatches) -> audioTP <> visualTP
+  (Just BothMatches, Nothing) -> audioFN <> visualFN
+  --
+  -- Nothing
+  --
+  (Nothing, Just VisualMatch) -> audioTN <> visualFP
+  (Nothing, Just AuditoryMatch) -> audioFP <> visualTN
+  (Nothing, Just BothMatches) -> audioFP <> visualFP
+  (Nothing, Nothing) -> audioTN <> visualTN
 
 getMistakes :: Game -> MistakeReport
 getMistakes g = findMistakes correctAnswers guesses
@@ -167,14 +248,14 @@ getMistakes g = findMistakes correctAnswers guesses
 findMistakes :: [Maybe Answer] -> [Maybe Answer] -> MistakeReport
 findMistakes ans guess = mconcat $ zipWith compareAnswers ans guess
 
-findAnswers
-  :: Int
-  -- ^ The current level.
-  -> Map.Map Int Int
-  -- ^ Hash map with the visual entries.
-  -> Map.Map Int Int
-  -- ^ Hash map with the auditory entries.
-  -> [Maybe Answer]
+findAnswers ::
+  -- | The current level.
+  Int ->
+  -- | Hash map with the visual entries.
+  Map.Map Int Int ->
+  -- | Hash map with the auditory entries.
+  Map.Map Int Int ->
+  [Maybe Answer]
 findAnswers lvl visualSeries auditorySeries =
   map
     ( \((i, a), (_, b)) ->
@@ -193,30 +274,30 @@ findAnswers lvl visualSeries auditorySeries =
     )
     (zip (Map.toList visualSeries) (Map.toList auditorySeries))
 
-randomList
-  :: Int
-  -- ^ The number of items in the list.
-  -> Int
-  -- ^ The upper range limit for each item.
-  -> IO [Int]
+randomList ::
+  -- | The number of items in the list.
+  Int ->
+  -- | The upper range limit for each item.
+  Int ->
+  IO [Int]
 randomList n maxIdx = replicateM n $ randomRIO (0, maxIdx)
 
-chooseItems
-  :: Int
-  -- ^ The total number of items to pick.
-  -> [a]
-  -- ^ The list to pick the items.
-  -> IO [a]
-  -- ^ The list with the picked items.
+chooseItems ::
+  -- | The total number of items to pick.
+  Int ->
+  -- | The list to pick the items.
+  [a] ->
+  -- | The list with the picked items.
+  IO [a]
 chooseItems num lst =
   take num . shuffle' lst (length lst) <$> newStdGen
 
 -- | Generate a valid random sequence for the nback trial.
-generateSeqs
-  :: Int
-  -- ^ The level we are in.
-  -> IO (Map.Map Int Int, Map.Map Int Int)
-  -- ^ The maps with the visual & auditory sequences.
+generateSeqs ::
+  -- | The level we are in.
+  Int ->
+  -- | The maps with the visual & auditory sequences.
+  IO (Map.Map Int Int, Map.Map Int Int)
 generateSeqs lvl = do
   let seqSize = numTrials lvl
       maxIndex = 7
@@ -244,14 +325,14 @@ generateSeqs lvl = do
     else generateSeqs lvl
 
 -- | Adjust the series to contain the specified number of matches.
-fixMatches
-  :: Map.Map Int Int
-  -- ^ The main series to be changed.
-  -> Int
-  -- ^ The level for which we are generating.
-  -> [Int]
-  -- ^ The indices of the series that need adjustment.
-  -> Map.Map Int Int
+fixMatches ::
+  -- | The main series to be changed.
+  Map.Map Int Int ->
+  -- | The level for which we are generating.
+  Int ->
+  -- | The indices of the series that need adjustment.
+  [Int] ->
+  Map.Map Int Int
 --- ^ The changed series.
 fixMatches series lvl indices =
   Map.mapWithKey
@@ -265,18 +346,18 @@ fixMatches series lvl indices =
     indices' = sort indices
 
 -- | Find the indexes that are a match.
-findMatches
-  :: Int
-  -- ^ The current level.
-  -> Map.Map Int Int
-  -- ^ The stimulus series.
-  -> [Int]
-  -- ^ The matches for the given series & level.
+findMatches ::
+  -- | The current level.
+  Int ->
+  -- | The stimulus series.
+  Map.Map Int Int ->
+  -- | The matches for the given series & level.
+  [Int]
 findMatches lvl series =
-  map fst
-    $ filter
-        (\(i, x) -> i >= lvl && series Map.! (i - lvl) == x)
-        (Map.toList series)
+  map fst $
+    filter
+      (\(i, x) -> i >= lvl && series Map.! (i - lvl) == x)
+      (Map.toList series)
 
 -- | Generate the initial answers map with no responses.
 initAnswers :: Int -> Map.Map Int (Maybe Answer)
@@ -324,10 +405,7 @@ createGame f lvl = do
       _answer = Nothing,
       _screen = TrialEndScreen,
       _sounds = allSounds,
-      _lastReport = MistakeReport
-        { visualMistakes = -1,
-          auditoryMistakes = -1
-        },
+      _lastReport = initReport,
       _statsFile = f,
       _stats = statsData
     }

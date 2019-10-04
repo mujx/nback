@@ -92,7 +92,7 @@ test-suite nback-test
   build-depends:       base ^>= 4.12.0.0
                      , nback
                      , tasty
-                     , tasty-hspec
+                     , tasty-hunit
                      , containers
 
   ghc-options:         -Wall
