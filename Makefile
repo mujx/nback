@@ -5,7 +5,7 @@ release:
 	nix-build release.nix
 
 gen-nix:
-	cabal2nix --no-check . > default.nix
+	cabal2nix --no-check --no-haddock . > default.nix
 
 clean:
 	git clean -xdf

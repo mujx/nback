@@ -1,5 +1,16 @@
 let
-  pkgs = import <nixpkgs> {};
-  proteaaudio = pkgs.haskellPackages.callPackage ./nix/proteaaudio.nix {};
+  config = {
+    packageOverrides = pkgs: rec {
+      haskellPackages = pkgs.haskellPackages.override {
+        overrides = haskellPackagesNew: haskellPackagesOld: rec {
+          proteaaudio =
+            haskellPackagesNew.callPackage ./nix/proteaaudio.nix {};
+        };
+      };
+    };
+  };
+
+  pkgs = import <nixpkgs> { inherit config; };
+
 in
-  pkgs.haskellPackages.callPackage ./default.nix { inherit proteaaudio; }
+  pkgs.haskellPackages.callPackage ./default.nix {}
