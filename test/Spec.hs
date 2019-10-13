@@ -19,14 +19,16 @@ findAnswersTest :: IO ()
 findAnswersTest = do
   findAnswers 2 (M.fromList [(0, 0), (1, 1), (2, 0), (3, 2)]) (M.fromList [(0, 1), (1, 1), (2, 1), (3, 1)])
     @=? [Nothing, Nothing, Just BothMatches, Just AuditoryMatch]
-  findAnswers 5
+  findAnswers
+    5
     (M.fromList [(0, 0), (1, 1), (2, 0), (3, 2), (4, 3), (5, 0), (6, 0), (7, 0), (8, 0), (9, 1)])
     (M.fromList [(0, 1), (1, 1), (2, 1), (3, 1), (4, 0), (5, 1), (6, 0), (7, 0), (8, 0), (9, 0)])
     @=? [Nothing, Nothing, Nothing, Nothing, Nothing, Just BothMatches, Nothing, Just VisualMatch, Nothing, Just AuditoryMatch]
 
 unitTests :: TestTree
 unitTests =
-  testGroup "Unit tests"
+  testGroup
+    "Unit tests"
     [ testCase "findAnswers" findAnswersTest,
       testCase "fixMatches" fixMatchesTest,
       testCase "findMatches" findMatchesTest

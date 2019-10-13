@@ -103,9 +103,9 @@ pastTrials g =
         $ B.borderWithLabel (Core.txt " Recent trials (24h)")
         $ Core.padAll 1
         $ Core.vBox
-            [ Core.padTopBottom 1 $
-                Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
-            ]
+          [ Core.padTopBottom 1 $
+              Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
+          ]
   where
     space = " "
     lineColor v =
@@ -289,7 +289,8 @@ updateGameStatus g = nextGame <&> (lastReport .~ report)
 
 theAttrMap :: A.AttrMap
 theAttrMap =
-  A.attrMap V.defAttr
+  A.attrMap
+    V.defAttr
     [ ("activeCell", bg blue),
       ("emptyCell", bg black),
       ("centralCell", bg black `V.withStyle` V.bold),
@@ -356,21 +357,22 @@ cliOpts :: FilePath -> Opt.Parser CliOpts
 cliOpts defDataPath =
   CliOpts
     <$> Opt.strOption
-          ( Opt.long "stat-file"
-              <> Opt.short 'f'
-              <> Opt.help "File to save trial's summary"
-              <> Opt.metavar "FILE"
-              <> Opt.showDefault
-              <> Opt.value defDataPath
-          )
-    <*> Opt.option Opt.auto
-          ( Opt.long "level"
-              <> Opt.short 'l'
-              <> Opt.help "Specify the N-Back level to start"
-              <> Opt.metavar "LEVEL"
-              <> Opt.showDefault
-              <> Opt.value 2
-          )
+      ( Opt.long "stat-file"
+          <> Opt.short 'f'
+          <> Opt.help "File to save trial's summary"
+          <> Opt.metavar "FILE"
+          <> Opt.showDefault
+          <> Opt.value defDataPath
+      )
+    <*> Opt.option
+      Opt.auto
+      ( Opt.long "level"
+          <> Opt.short 'l'
+          <> Opt.help "Specify the N-Back level to start"
+          <> Opt.metavar "LEVEL"
+          <> Opt.showDefault
+          <> Opt.value 2
+      )
 
 opts :: FilePath -> Opt.ParserInfo CliOpts
 opts defDataPath =

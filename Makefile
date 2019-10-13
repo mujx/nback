@@ -13,4 +13,7 @@ clean:
 hlint:
 	@hlint -q app && hlint -q ./test && hlint -q src
 
+fmt:
+	ormolu -m inplace ./**/*.hs
+
 .PHONY: test

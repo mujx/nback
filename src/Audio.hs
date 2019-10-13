@@ -27,8 +27,8 @@ data SoundFile
 
 allSounds :: Map.Map Int SoundFile
 allSounds =
-  Map.fromList
-    $ zip [0 ..] (enumFrom (toEnum 0) :: [SoundFile])
+  Map.fromList $
+    zip [0 ..] (enumFrom (toEnum 0) :: [SoundFile])
 
 soundData :: SoundFile -> Bs.ByteString
 soundData C = $(embedFile "sounds/letters/c.wav")
