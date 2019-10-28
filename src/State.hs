@@ -38,6 +38,7 @@ import GHC.Generics
 import Lens.Micro
 import Lens.Micro.TH (makeLenses)
 import System.Directory (doesPathExist)
+import qualified System.IO.Strict as S
 import System.Random (newStdGen, randomRIO)
 import System.Random.Shuffle (shuffle')
 
@@ -366,7 +367,7 @@ initAnswers lvl = Map.fromList (zip [0 ..] (replicate (numTrials lvl) Nothing))
 readStatsFile :: FilePath -> IO [StatsLine]
 readStatsFile f = do
   checkStatsFile f
-  content <- readFile f
+  content <- S.readFile f
   currTime <- getCurrentTime
   pure
     $ filter (isRecent currTime)

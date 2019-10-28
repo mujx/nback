@@ -1,7 +1,7 @@
 { mkDerivation, aeson, base, brick, bytestring, containers
 , directory, file-embed, microlens, microlens-th
 , optparse-applicative, proteaaudio, random, random-shuffle, stdenv
-, tasty, tasty-hunit, time, vty
+, strict, tasty, tasty-hunit, time, vty
 }:
 mkDerivation {
   pname = "nback";
@@ -11,7 +11,8 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     aeson base brick bytestring containers directory file-embed
-    microlens microlens-th proteaaudio random random-shuffle time vty
+    microlens microlens-th proteaaudio random random-shuffle strict
+    time vty
   ];
   executableHaskellDepends = [
     aeson base brick bytestring containers directory microlens

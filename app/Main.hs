@@ -229,14 +229,19 @@ box = Core.vBox [emptySpace, emptySpace]
 handleEvent :: Game -> T.BrickEvent Name ClockEvent -> T.EventM Name (T.Next Game)
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = M.continue $ registerAnswer (Just AuditoryMatch) g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = M.continue $ registerAnswer (Just VisualMatch) g
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = M.continue $ cancelTrial g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'u') [])) = M.continue $ increaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = M.continue $ decreaseLevel g
-handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = M.continue $ startTrial g
+handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
+  g' <- liftIO $ createGame (g ^. statsFile) (g ^. level)
+  M.continue $ startTrial g'
 handleEvent g (AppEvent Play) =
   case g ^. screen of
     GameScreen ->
       if g ^. end
-        then prepareNextLevel g
+        then do
+          g' <- liftIO $ updateGameStatus g
+          M.continue g'
         else do
           void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
           M.continue $ showNextBlock g
@@ -245,12 +250,24 @@ handleEvent g (AppEvent Stop) =
   case g ^. screen of
     GameScreen ->
       if g ^. end
-        then prepareNextLevel g
+        then do
+          g' <- liftIO $ updateGameStatus g
+          M.continue g'
         else M.continue $ clearBlock g
     _ -> M.continue g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc [])) = M.halt g
 handleEvent g _ = M.continue g
+
+-- | Cancel the current trial and move to the main menu.
+cancelTrial :: Game -> Game
+cancelTrial g = case g ^. screen of
+  GameScreen ->
+    g
+      & (screen .~ TrialEndScreen)
+      & (end .~ True)
+      & (block .~ 0)
+  _ -> g
 
 -- | Move manually to the next level.
 increaseLevel :: Game -> Game
@@ -272,17 +289,19 @@ startTrial g = case g ^. screen of
 hasEnoughBlocks :: Game -> Bool
 hasEnoughBlocks g = g ^. block < Map.size (g ^. visuals)
 
-prepareNextLevel :: Game -> T.EventM n (T.Next Game)
-prepareNextLevel g = do
+updateGameStatus :: Game -> IO Game
+updateGameStatus g = do
   ts <- liftIO getPOSIXTime
   let statLine = mkStatsLine ts g
+      nextLevel = decideNextLevel (g ^. level) report
+      report = getMistakes g
   liftIO $ saveTrialStats g statLine
-  g' <- liftIO $ updateGameStatus g
-  M.continue
-    ( g'
-        & (screen .~ TrialEndScreen)
-        & (stats .~ take 15 (statLine : (g ^. stats)))
-    )
+  pure $
+    g
+      & (screen .~ TrialEndScreen)
+      & (stats .~ take 15 (statLine : (g ^. stats)))
+      & (lastReport .~ report)
+      & (level .~ nextLevel)
 
 mkStatsLine :: POSIXTime -> Game -> StatsLine
 mkStatsLine ts g =
@@ -308,13 +327,6 @@ playRandomSound g =
       fromMaybe
         (error "playRandomSound: Non existent position in the sounds map")
         (Map.lookup (g ^. block) (g ^. auditory))
-
-updateGameStatus :: Game -> IO Game
-updateGameStatus g = nextGame <&> (lastReport .~ report)
-  where
-    nextGame = createGame (g ^. statsFile) nextLevel
-    nextLevel = decideNextLevel (g ^. level) report
-    report = getMistakes g
 
 theAttrMap :: A.AttrMap
 theAttrMap =

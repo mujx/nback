@@ -67,6 +67,7 @@ library
                      , proteaaudio
                      , random
                      , random-shuffle
+                     , strict
                      , time
                      , vty
 

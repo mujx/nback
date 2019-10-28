@@ -4,6 +4,9 @@ nix-shell:
 release:
 	nix-build release.nix
 
+install:
+	nix-env -f ./release.nix -i
+
 gen-nix:
 	cabal2nix --no-check --no-haddock . > default.nix
 
