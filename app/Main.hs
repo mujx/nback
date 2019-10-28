@@ -62,7 +62,14 @@ drawUI g =
   [ C.center $
       Core.vBox
         [ drawMain g,
-          Core.padTop (T.Pad 1) (Core.hBox [drawLevelInfo g, drawControls])
+          Core.padTop
+            (T.Pad 1)
+            ( Core.hBox
+                [ drawLevelInfo g,
+                  drawControls,
+                  manualControls
+                ]
+            )
         ]
   ]
 
@@ -77,6 +84,14 @@ drawLevelInfo g =
               <> "/"
               <> show (length $ g ^. auditory)
           )
+      ]
+
+manualControls :: Widget Name
+manualControls =
+  Core.padRight (T.Pad 1) $
+    Core.vBox
+      [ Core.txt "Next level:     U",
+        Core.txt "Previous level: D"
       ]
 
 drawControls :: Widget Name
@@ -214,6 +229,8 @@ box = Core.vBox [emptySpace, emptySpace]
 handleEvent :: Game -> T.BrickEvent Name ClockEvent -> T.EventM Name (T.Next Game)
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = M.continue $ registerAnswer (Just AuditoryMatch) g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = M.continue $ registerAnswer (Just VisualMatch) g
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'u') [])) = M.continue $ increaseLevel g
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = M.continue $ decreaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = M.continue $ startTrial g
 handleEvent g (AppEvent Play) =
   case g ^. screen of
@@ -234,6 +251,18 @@ handleEvent g (AppEvent Stop) =
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc [])) = M.halt g
 handleEvent g _ = M.continue g
+
+-- | Move manually to the next level.
+increaseLevel :: Game -> Game
+increaseLevel g = case g ^. screen of
+  TrialEndScreen -> (level %~ (+ 1)) g
+  _ -> g
+
+-- | Move manually to the previous level.
+decreaseLevel :: Game -> Game
+decreaseLevel g = case g ^. screen of
+  TrialEndScreen -> (level %~ (\x -> max 2 (x - 1))) g
+  _ -> g
 
 startTrial :: Game -> Game
 startTrial g = case g ^. screen of
