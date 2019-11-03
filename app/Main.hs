@@ -115,13 +115,16 @@ pastTrials g =
     then Core.txt ""
     else
       C.hCenter $ Core.withBorderStyle BS.unicodeBold
-        $ B.borderWithLabel (Core.txt " Recent trials (24h)")
+        $ B.borderWithLabel (Core.str (" The last" <> borderLabel <> "trials (24h)"))
         $ Core.padAll 1
         $ Core.vBox
           [ Core.padTopBottom 1 $
               Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
           ]
   where
+    borderLabel = case length (g ^. stats) of
+      x | x > 0 -> space <> show x <> space
+      _ -> space
     space = " "
     lineColor v =
       let nextLvl = decideNextLevel (statsLevel v) (statsReport v)
