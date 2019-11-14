@@ -5,7 +5,7 @@ module Chart
   )
 where
 
-import Control.Lens
+import Lens.Micro
 import Data.Colour
 import Data.Colour.Names
 import Data.Default.Class

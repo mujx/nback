@@ -67,7 +67,6 @@ library
                      , data-default-class
                      , directory
                      , file-embed
-                     , lens
                      , microlens
                      , microlens-th
                      , proteaaudio

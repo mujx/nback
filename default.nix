@@ -1,6 +1,6 @@
 { mkDerivation, aeson, base, brick, bytestring, Chart
 , Chart-diagrams, colour, containers, data-default-class, directory
-, file-embed, lens, microlens, microlens-th, optparse-applicative
+, file-embed, microlens, microlens-th, optparse-applicative
 , proteaaudio, random, random-shuffle, stdenv, strict, tasty
 , tasty-hunit, text, time, vty
 }:
@@ -12,7 +12,7 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     aeson base brick bytestring Chart Chart-diagrams colour containers
-    data-default-class directory file-embed lens microlens microlens-th
+    data-default-class directory file-embed microlens microlens-th
     proteaaudio random random-shuffle strict text time vty
   ];
   executableHaskellDepends = [
