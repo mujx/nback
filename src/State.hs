@@ -8,6 +8,7 @@ module State
     Screen (..),
     StatsLine (..),
     initReport,
+    readAllStats,
     calcPerf,
     chooseItems,
     generateSeqs,
@@ -364,17 +365,22 @@ findMatches lvl series =
 initAnswers :: Int -> Map.Map Int (Maybe Answer)
 initAnswers lvl = Map.fromList (zip [0 ..] (replicate (numTrials lvl) Nothing))
 
-readStatsFile :: FilePath -> IO [StatsLine]
-readStatsFile f = do
+readAllStats :: FilePath -> IO [StatsLine]
+readAllStats f = do
   checkStatsFile f
   content <- S.readFile f
+  pure
+    $ map (either error id . eitherDecode . LBs.pack)
+    $ reverse
+    $ lines content
+
+readStatsFile :: FilePath -> IO [StatsLine]
+readStatsFile f = do
+  xs <- readAllStats f
   currTime <- getCurrentTime
   pure
     $ filter (isRecent currTime)
-    $ map (either error id . eitherDecode . LBs.pack)
-    $ take 15
-    $ reverse
-    $ lines content
+    $ take minScoreEntries xs
 
 isRecent :: UTCTime -> StatsLine -> Bool
 isRecent t1 line = diffUTCTime t1 t2 < twentyFourHours

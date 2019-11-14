@@ -54,20 +54,27 @@ library
                        State
                      , Constants
                      , Audio
+                     , Chart
 
   build-depends:       base ^>= 4.12.0.0
                      , aeson
                      , brick
                      , bytestring
+                     , Chart
+                     , Chart-diagrams
+                     , colour
                      , containers
+                     , data-default-class
                      , directory
                      , file-embed
+                     , lens
                      , microlens
                      , microlens-th
                      , proteaaudio
                      , random
                      , random-shuffle
                      , strict
+                     , text
                      , time
                      , vty
 

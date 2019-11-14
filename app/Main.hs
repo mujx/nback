@@ -20,7 +20,8 @@ import qualified Brick.Widgets.Border as B
 import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Core as Core
-import Constants (restDuration, stimulusDuration)
+import Chart (mkChart)
+import Constants (minScoreEntries, restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
@@ -49,6 +50,7 @@ import State
     decideNextLevel,
     getMistakes,
     initReport,
+    readAllStats,
   )
 import System.Directory
 
@@ -230,6 +232,7 @@ box :: Widget ()
 box = Core.vBox [emptySpace, emptySpace]
 
 handleEvent :: Game -> T.BrickEvent Name ClockEvent -> T.EventM Name (T.Next Game)
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'g') [])) = generateChart g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = M.continue $ registerAnswer (Just AuditoryMatch) g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = M.continue $ registerAnswer (Just VisualMatch) g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = M.continue $ cancelTrial g
@@ -302,7 +305,7 @@ updateGameStatus g = do
   pure $
     g
       & (screen .~ TrialEndScreen)
-      & (stats .~ take 15 (statLine : (g ^. stats)))
+      & (stats .~ take minScoreEntries (statLine : (g ^. stats)))
       & (lastReport .~ report)
       & (level .~ nextLevel)
 
@@ -343,6 +346,15 @@ theAttrMap =
       ("redLine", red `on` black),
       ("yellowLine", yellow `on` black)
     ]
+
+generateChart :: Game -> T.EventM n (T.Next Game)
+generateChart g =
+  case g ^. screen of
+    GameScreen -> M.continue g
+    _          -> do
+      allStats <- liftIO $ readAllStats (g ^. statsFile)
+      _        <- liftIO $ mkChart allStats
+      M.continue g
 
 -- | Set the answer for the block.
 --   If an answer has been set try to fuse it with the existing one.
