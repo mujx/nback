@@ -12,9 +12,9 @@ jobs:
       - run:
           name: Resolve/Update Dependencies
           command: stack --no-terminal setup
-      - run:
-          name: Run tests
-          command: stack --no-terminal test
+      # - run:
+      #     name: Run tests
+      #     command: stack --no-terminal test
       - run:
           name: Build executable
           command: stack --no-terminal build
