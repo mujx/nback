@@ -1,6 +1,9 @@
 nix-shell:
 	nix-shell --attr env release.nix
 
+test:
+	nix-shell --attr env release.nix --run "cabal test"
+
 release:
 	nix-build release.nix
 
