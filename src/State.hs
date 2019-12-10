@@ -199,7 +199,9 @@ data Game
         -- | A file to save the results after each trial.
         _statsFile :: FilePath,
         -- | Statistics loaded.
-        _stats :: [StatsLine]
+        _stats :: [StatsLine],
+        -- | Trials per session.
+        _trials :: Int
       }
   deriving (Show)
 
@@ -374,13 +376,13 @@ readAllStats f = do
     $ reverse
     $ lines content
 
-readStatsFile :: FilePath -> IO [StatsLine]
-readStatsFile f = do
+readStatsFile :: FilePath -> Int -> IO [StatsLine]
+readStatsFile f minTrials = do
   xs <- readAllStats f
   currTime <- getCurrentTime
   pure
     $ filter (isRecent currTime)
-    $ take minScoreEntries xs
+    $ take minTrials xs
 
 isRecent :: UTCTime -> StatsLine -> Bool
 isRecent t1 line = diffUTCTime t1 t2 < twentyFourHours
@@ -397,22 +399,23 @@ checkStatsFile f = do
     else pure ()
 
 -- | Initialiaze the game state.
-createGame :: FilePath -> Int -> IO Game
-createGame f lvl = do
-  statsData <- readStatsFile f
+createGame :: FilePath -> Int -> Int -> IO Game
+createGame f lvl minTrials = do
+  statsData <- readStatsFile f minTrials
   seqs <- generateSeqs lvl
   return $ Game
-    { _visuals = fst seqs,
-      _auditory = snd seqs,
-      _answers = initAnswers lvl,
-      _block = 0,
-      _level = lvl,
-      _isActive = False,
-      _end = False,
-      _answer = Nothing,
-      _screen = TrialEndScreen,
-      _sounds = allSounds,
+    { _visuals    = fst seqs,
+      _auditory   = snd seqs,
+      _answers    = initAnswers lvl,
+      _block      = 0,
+      _level      = lvl,
+      _isActive   = False,
+      _end        = False,
+      _answer     = Nothing,
+      _screen     = TrialEndScreen,
+      _sounds     = allSounds,
       _lastReport = initReport,
-      _statsFile = f,
-      _stats = statsData
+      _statsFile  = f,
+      _stats      = statsData,
+      _trials     = minTrials
     }

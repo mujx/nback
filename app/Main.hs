@@ -21,7 +21,7 @@ import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
-import Constants (minScoreEntries, restDuration, stimulusDuration)
+import Constants (restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
@@ -239,7 +239,12 @@ handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = M.continue $ cancelTrial g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'u') [])) = M.continue $ increaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = M.continue $ decreaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
-  g' <- liftIO $ createGame (g ^. statsFile) (g ^. level)
+  g' <-
+    liftIO $
+      createGame
+        (g ^. statsFile)
+        (g ^. level)
+        (g ^. trials)
   M.continue $ startTrial g'
 handleEvent g (AppEvent Play) =
   case g ^. screen of
@@ -305,7 +310,7 @@ updateGameStatus g = do
   pure $
     g
       & (screen .~ TrialEndScreen)
-      & (stats .~ take minScoreEntries (statLine : (g ^. stats)))
+      & (stats .~ take (g ^. trials) (statLine : (g ^. stats)))
       & (lastReport .~ report)
       & (level .~ nextLevel)
 
@@ -406,7 +411,8 @@ data ClockEvent
 data CliOpts
   = CliOpts
       { optFile :: String,
-        optLevel :: Int
+        optLevel :: Int,
+        optTrials :: Int
       }
 
 cliOpts :: FilePath -> Opt.Parser CliOpts
@@ -429,6 +435,15 @@ cliOpts defDataPath =
           <> Opt.showDefault
           <> Opt.value 2
       )
+    <*> Opt.option
+      Opt.auto
+      ( Opt.long "trials"
+          <> Opt.short 't'
+          <> Opt.help "The number of trials in a session"
+          <> Opt.metavar "TRIALS"
+          <> Opt.showDefault
+          <> Opt.value 20
+      )
 
 opts :: FilePath -> Opt.ParserInfo CliOpts
 opts defDataPath =
@@ -450,7 +465,11 @@ main = do
     threadDelay $ stimulusDuration * 1000
     writeBChan chan Stop
     threadDelay $ restDuration * 1000
-  gameState <- createGame (optFile parsedOpts) (optLevel parsedOpts)
+  gameState <-
+    createGame
+      (optFile parsedOpts)
+      (optLevel parsedOpts)
+      (optTrials parsedOpts)
   let buildVty = Graphics.Vty.mkVty Graphics.Vty.defaultConfig
   initialVty <- buildVty
   M.customMain initialVty buildVty (Just chan) app gameState >> pure ()

@@ -3,14 +3,10 @@ module Constants
     stimulusDuration,
     commonMatchesNum,
     modalityMatchesNum,
-    minScoreEntries,
     matchesNum,
     numTrials,
   )
 where
-
-minScoreEntries :: Int
-minScoreEntries = 15
 
 -- | Number of ms between trials.
 restDuration :: Int
