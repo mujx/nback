@@ -381,14 +381,13 @@ readStatsFile f minTrials = do
   xs <- readAllStats f
   currTime <- getCurrentTime
   pure
-    $ filter (isRecent currTime)
+    $ filter (isFromToday currTime)
     $ take minTrials xs
 
-isRecent :: UTCTime -> StatsLine -> Bool
-isRecent t1 line = diffUTCTime t1 t2 < twentyFourHours
+isFromToday :: UTCTime -> StatsLine -> Bool
+isFromToday t1 line = utctDay t1 == utctDay t2
   where
     t2 = posixSecondsToUTCTime $ statsTs line
-    twentyFourHours = 86400
 
 -- | Check whether a file exists. Create it, if not.
 checkStatsFile :: FilePath -> IO ()

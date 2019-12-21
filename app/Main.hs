@@ -117,7 +117,7 @@ pastTrials g =
     then Core.txt ""
     else
       C.hCenter $ Core.withBorderStyle BS.unicodeBold
-        $ B.borderWithLabel (Core.str (" The last" <> borderLabel <> "trials (24h)"))
+        $ B.borderWithLabel (Core.str (" Today's trials (" <> borderLabel <> ") "))
         $ Core.padAll 1
         $ Core.vBox
           [ Core.padTopBottom 1 $
