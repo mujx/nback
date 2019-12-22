@@ -23,6 +23,7 @@ import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
 import Constants (restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.STM (atomically, newTVar, readTVar, writeTVar)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -235,50 +236,61 @@ handleEvent :: Game -> T.BrickEvent Name ClockEvent -> T.EventM Name (T.Next Gam
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'g') [])) = generateChart g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'a') [])) = M.continue $ registerAnswer (Just AuditoryMatch) g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'l') [])) = M.continue $ registerAnswer (Just VisualMatch) g
-handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = M.continue $ cancelTrial g
+handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = cancelTrial g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'u') [])) = M.continue $ increaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = M.continue $ decreaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
+  liftIO $ atomically $ writeTVar (g ^. playing) True
   g' <-
     liftIO $
       createGame
+        (g ^. playing)
         (g ^. statsFile)
         (g ^. level)
         (g ^. trials)
   M.continue $ startTrial g'
-handleEvent g (AppEvent Play) =
-  case g ^. screen of
-    GameScreen ->
-      if g ^. end
-        then do
-          g' <- liftIO $ updateGameStatus g
-          M.continue g'
-        else do
-          void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
-          M.continue $ showNextBlock g
-    _ -> M.continue g
-handleEvent g (AppEvent Stop) =
-  case g ^. screen of
-    GameScreen ->
-      if g ^. end
-        then do
-          g' <- liftIO $ updateGameStatus g
-          M.continue g'
-        else M.continue $ clearBlock g
-    _ -> M.continue g
+handleEvent g (AppEvent Play) = do
+  isPlaying <- liftIO $ atomically $ readTVar (g ^. playing)
+  if isPlaying then
+    case g ^. screen of
+      GameScreen ->
+        if g ^. end
+          then do
+            g' <- liftIO $ updateGameStatus g
+            M.continue g'
+          else do
+            void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
+            M.continue $ showNextBlock g
+      _ -> M.continue g
+   else M.continue g
+handleEvent g (AppEvent Stop) = do
+  isPlaying <- liftIO $ atomically $ readTVar (g ^. playing)
+  if isPlaying then
+    case g ^. screen of
+      GameScreen ->
+        if g ^. end
+          then do
+            g' <- liftIO $ updateGameStatus g
+            M.continue g'
+          else M.continue $ clearBlock g
+      _ -> M.continue g
+  else M.continue g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc [])) = M.halt g
 handleEvent g _ = M.continue g
 
 -- | Cancel the current trial and move to the main menu.
-cancelTrial :: Game -> Game
-cancelTrial g = case g ^. screen of
-  GameScreen ->
-    g
-      & (screen .~ TrialEndScreen)
-      & (end .~ True)
-      & (block .~ 0)
-  _ -> g
+-- cancelTrial :: Game -> Game
+cancelTrial g = do
+  liftIO $ atomically $ writeTVar (g ^. playing) False
+  M.continue $
+    case g ^. screen of
+      GameScreen ->
+        g
+          & (screen .~ TrialEndScreen)
+          & (end .~ True)
+          & (block .~ 0)
+      _ -> g
 
 -- | Move manually to the next level.
 increaseLevel :: Game -> Game
@@ -454,22 +466,32 @@ opts defDataPath =
         <> Opt.header ("nback :: v" <> showVersion version)
     )
 
+
+playLoop hasStartedVar chan = do
+  isPlaying <- atomically $ readTVar hasStartedVar
+  if isPlaying
+    then do
+      writeBChan chan Play
+      threadDelay $ stimulusDuration * 1000
+      writeBChan chan Stop
+      threadDelay $ restDuration * 1000
+    else do
+      threadDelay $ 100000
+  
 main :: IO ()
 main = do
   defDataPath <- getXdgDirectory XdgData "nback"
   createDirectoryIfMissing True defDataPath
   parsedOpts <- Opt.execParser (opts (defDataPath <> "/trials.log"))
-  chan <- newBChan 10
-  void $ forkIO $ forever $ do
-    writeBChan chan Play
-    threadDelay $ stimulusDuration * 1000
-    writeBChan chan Stop
-    threadDelay $ restDuration * 1000
+  hasStarted <- atomically $ newTVar False
+  chan       <- newBChan 1
   gameState <-
     createGame
+      hasStarted
       (optFile parsedOpts)
       (optLevel parsedOpts)
       (optTrials parsedOpts)
   let buildVty = Graphics.Vty.mkVty Graphics.Vty.defaultConfig
   initialVty <- buildVty
+  void $ forkIO $ forever $ playLoop hasStarted chan
   M.customMain initialVty buildVty (Just chan) app gameState >> pure ()

@@ -42,6 +42,7 @@ import System.Directory (doesPathExist)
 import qualified System.IO.Strict as S
 import System.Random (newStdGen, randomRIO)
 import System.Random.Shuffle (shuffle')
+import Control.Concurrent.STM (TVar)
 
 data Answer
   = AuditoryMatch
@@ -174,9 +175,9 @@ data Screen
 
 data Game
   = Game
-      { -- | The visual sequence choosen for the current trial.
+      { -- | The visual sequence chosen for the current trial.
         _visuals :: Map.Map Int Int,
-        -- | The sound sequence choosen for the current trial.
+        -- | The sound sequence chosen for the current trial.
         _auditory :: Map.Map Int Int,
         -- | The answers given through out the trial.
         _answers :: Map.Map Int (Maybe Answer),
@@ -201,9 +202,10 @@ data Game
         -- | Statistics loaded.
         _stats :: [StatsLine],
         -- | Trials per session.
-        _trials :: Int
+        _trials :: Int,
+        -- | Indicate whiter the play/stop signal should be emitted.
+        _playing :: TVar Bool
       }
-  deriving (Show)
 
 makeLenses ''Game
 
@@ -397,9 +399,9 @@ checkStatsFile f = do
     then writeFile f ""
     else pure ()
 
--- | Initialiaze the game state.
-createGame :: FilePath -> Int -> Int -> IO Game
-createGame f lvl minTrials = do
+-- | Initialize the game state.
+createGame :: TVar Bool -> FilePath -> Int -> Int -> IO Game
+createGame isPlaying f lvl minTrials = do
   statsData <- readStatsFile f minTrials
   seqs <- generateSeqs lvl
   return $ Game
@@ -416,5 +418,6 @@ createGame f lvl minTrials = do
       _lastReport = initReport,
       _statsFile  = f,
       _stats      = statsData,
-      _trials     = minTrials
+      _trials     = minTrials,
+      _playing    = isPlaying
     }
