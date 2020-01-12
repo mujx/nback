@@ -126,7 +126,15 @@ pastTrials g =
           ]
   where
     borderLabel = case length (g ^. stats) of
-      x | x > 0 -> space <> show x <> space
+      x
+        | x > 0 ->
+          space
+            <> show x
+            <> space
+            <> "/"
+            <> space
+            <> show (g ^. trials)
+            <> space
       _ -> space
     space = " "
     lineColor v =
