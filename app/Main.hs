@@ -8,7 +8,7 @@ where
 
 import Audio (playSound)
 import qualified Brick.AttrMap as A
-import Brick.BChan (newBChan, writeBChan)
+import Brick.BChan (BChan, newBChan, writeBChan)
 import qualified Brick.Main as M
 import Brick.Types
   ( BrickEvent (..),
@@ -23,7 +23,7 @@ import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
 import Constants (restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Concurrent.STM (atomically, newTVar, readTVar, writeTVar)
+import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, writeTVar)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -288,7 +288,7 @@ handleEvent g (VtyEvent (V.EvKey V.KEsc [])) = M.halt g
 handleEvent g _ = M.continue g
 
 -- | Cancel the current trial and move to the main menu.
--- cancelTrial :: Game -> Game
+cancelTrial :: Game -> T.EventM n (T.Next Game)
 cancelTrial g = do
   liftIO $ atomically $ writeTVar (g ^. playing) False
   M.continue $
@@ -474,7 +474,7 @@ opts defDataPath =
         <> Opt.header ("nback :: v" <> showVersion version)
     )
 
-
+playLoop :: TVar Bool -> BChan ClockEvent -> IO ()
 playLoop hasStartedVar chan = do
   isPlaying <- atomically $ readTVar hasStartedVar
   if isPlaying

@@ -17,10 +17,19 @@ import Graphics.Rendering.Chart
 import Graphics.Rendering.Chart.Backend.Diagrams (renderableToFile)
 import State (StatsLine (..), calcPerf)
 
+type ChartLine =
+  ( LocalTime,
+    -- Audio score.
+    Double,
+    -- Visual score.
+    Double,
+    -- The max level achieved.
+    Double
+  )
 
-scores :: [StatsLine] -> [(LocalTime, Double, Double)]
+scores :: [StatsLine] -> [ChartLine]
 scores xs =
-  map dayAvg
+  map mkScores
     $ filter withEnoughEntries
     $ groupBy sameDay xs
   where
@@ -34,12 +43,13 @@ scores xs =
         day' = utctDay . posixSecondsToUTCTime . statsTs
 
     -- | Compute the average score over the given entries.
-    dayAvg :: [StatsLine] -> (LocalTime, Double, Double)
-    dayAvg [] = error "An empty list was generated"
-    dayAvg ss = (getTime $ head ss, audioAvg ss, visualAvg ss)
+    mkScores :: [StatsLine] -> ChartLine
+    mkScores [] = error "An empty list was generated"
+    mkScores ss = (getTime $ head ss, audioAvg ss, visualAvg ss, maxLevel ss)
       where
         audioAvg  ss' = sum (map (\x -> getAudio x / 100) ss') / (fromIntegral (length ss') :: Double)
         visualAvg ss' = sum (map (\x -> getVisual x / 100) ss') / (fromIntegral (length ss') :: Double)
+        maxLevel ss'  = fromIntegral $ maximum $ map statsLevel ss'
 
     getTime :: StatsLine -> LocalTime
     getTime x = utcToLocalTime utc (posixSecondsToUTCTime (statsTs x))
@@ -58,21 +68,28 @@ chart xs = toRenderable layout
   where
     audio =
       plot_lines_style . line_color .~ opaque blue
-        $ plot_lines_values .~ [[(d, v) | (d, v, _) <- scores xs]]
+        $ plot_lines_values .~ [[(d, v) | (d, v, _, _) <- scores xs]]
         $ plot_lines_title .~ "Audio"
         $ def
     visual =
       plot_lines_style . line_color .~ opaque green
-        $ plot_lines_values .~ [[(d, v) | (d, _, v) <- scores xs]]
+        $ plot_lines_values .~ [[(d, v) | (d, _, v, _) <- scores xs]]
         $ plot_lines_title .~ "Visual"
         $ def
+    maxlvl =
+      plot_lines_style . line_color .~ opaque red
+        $ plot_lines_values .~ [[(d, v) | (d, _, _, v) <- scores xs]]
+        $ plot_lines_title .~ "Max level"
+        $ def
     layout =
-      layoutlr_title .~ "Score"
-        $ layoutlr_left_axis . laxis_override .~ axisGridHide
-        $ layoutlr_right_axis . laxis_override .~ axisGridHide
-        $ layoutlr_x_axis . laxis_override .~ axisGridHide
-        $ layoutlr_plots .~ [Left (toPlot audio), Right (toPlot visual)]
-        $ layoutlr_grid_last .~ False
+      layout_title .~ "Scores"
+        $ layout_x_axis . laxis_override .~ axisGridHide
+        $ layout_plots
+          .~ [ (toPlot audio),
+               (toPlot visual),
+               (toPlot maxlvl)
+             ]
+        $ layout_grid_last .~ True
         $ def
 
 -- | Show a 2D chart with the score over time.
