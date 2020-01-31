@@ -85,9 +85,9 @@ chart xs = toRenderable layout
       layout_title .~ "Scores"
         $ layout_x_axis . laxis_override .~ axisGridHide
         $ layout_plots
-          .~ [ (toPlot audio),
-               (toPlot visual),
-               (toPlot maxlvl)
+          .~ [ toPlot audio,
+               toPlot visual,
+               toPlot maxlvl
              ]
         $ layout_grid_last .~ True
         $ def

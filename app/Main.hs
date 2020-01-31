@@ -23,7 +23,7 @@ import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
 import Constants (restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, writeTVar)
+import Control.Concurrent.STM (TVar, atomically, newTVar, readTVarIO, writeTVar)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -258,7 +258,7 @@ handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
         (g ^. trials)
   M.continue $ startTrial g'
 handleEvent g (AppEvent Play) = do
-  isPlaying <- liftIO $ atomically $ readTVar (g ^. playing)
+  isPlaying <- liftIO $ readTVarIO (g ^. playing)
   if isPlaying then
     case g ^. screen of
       GameScreen ->
@@ -272,7 +272,7 @@ handleEvent g (AppEvent Play) = do
       _ -> M.continue g
    else M.continue g
 handleEvent g (AppEvent Stop) = do
-  isPlaying <- liftIO $ atomically $ readTVar (g ^. playing)
+  isPlaying <- liftIO $ readTVarIO (g ^. playing)
   if isPlaying then
     case g ^. screen of
       GameScreen ->
@@ -280,9 +280,9 @@ handleEvent g (AppEvent Stop) = do
           then do
             g' <- liftIO $ updateGameStatus g
             M.continue g'
-          else do
-            if (g ^. playedSound) then M.continue $ clearBlock (g & (playedSound .~ False))
-                                  else M.continue g -- Invalid `Stop` event.
+          else
+            if g ^. playedSound then M.continue $ clearBlock (g & (playedSound .~ False))
+                                else M.continue g -- Invalid `Stop` event.
       _ -> M.continue g
   else M.continue g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
@@ -478,15 +478,14 @@ opts defDataPath =
 
 playLoop :: TVar Bool -> BChan ClockEvent -> IO ()
 playLoop hasStartedVar chan = do
-  isPlaying <- atomically $ readTVar hasStartedVar
+  isPlaying <- readTVarIO hasStartedVar
   if isPlaying
     then do
       writeBChan chan Play
       threadDelay $ stimulusDuration * 1000
       writeBChan chan Stop
       threadDelay $ restDuration * 1000
-    else do
-      threadDelay $ 100000
+    else threadDelay 100000
   
 main :: IO ()
 main = do

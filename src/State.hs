@@ -266,22 +266,23 @@ findAnswers ::
   Map.Map Int Int ->
   [Maybe Answer]
 findAnswers lvl visualSeries auditorySeries =
-  map
-    ( \((i, a), (_, b)) ->
-        if i >= lvl
-          then
-            if a == (visualSeries Map.! (i - lvl)) && b == (auditorySeries Map.! (i - lvl))
-              then Just BothMatches
-              else
-                if a == (visualSeries Map.! (i - lvl))
-                  then Just VisualMatch
-                  else
-                    if b == (auditorySeries Map.! (i - lvl))
-                      then Just AuditoryMatch
-                      else Nothing
-          else Nothing
-    )
-    (zip (Map.toList visualSeries) (Map.toList auditorySeries))
+  zipWith
+    (curry
+      ( \((i, a), (_, b)) ->
+          if i >= lvl
+            then
+              if a == (visualSeries Map.! (i - lvl)) && b == (auditorySeries Map.! (i - lvl))
+                then Just BothMatches
+                else
+                  if a == (visualSeries Map.! (i - lvl))
+                    then Just VisualMatch
+                    else
+                      if b == (auditorySeries Map.! (i - lvl))
+                        then Just AuditoryMatch
+                        else Nothing
+            else Nothing))
+    (Map.toList visualSeries)
+    (Map.toList auditorySeries)
 
 randomList ::
   -- | The number of items in the list.
