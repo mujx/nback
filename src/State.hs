@@ -204,7 +204,10 @@ data Game
         -- | Trials per session.
         _trials :: Int,
         -- | Indicate whiter the play/stop signal should be emitted.
-        _playing :: TVar Bool
+        _playing :: TVar Bool,
+        -- | Whether the `Play` step was executed succefully.
+        -- This guards against the presence of an invalid `Stop` state without a `Play` event.
+        _playedSound :: Bool
       }
 
 makeLenses ''Game
@@ -419,5 +422,6 @@ createGame isPlaying f lvl minTrials = do
       _statsFile  = f,
       _stats      = statsData,
       _trials     = minTrials,
-      _playing    = isPlaying
+      _playing    = isPlaying,
+      _playedSound = False
     }

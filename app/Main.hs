@@ -268,7 +268,7 @@ handleEvent g (AppEvent Play) = do
             M.continue g'
           else do
             void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
-            M.continue $ showNextBlock g
+            M.continue $ showNextBlock (g & (playedSound .~ True))
       _ -> M.continue g
    else M.continue g
 handleEvent g (AppEvent Stop) = do
@@ -280,7 +280,9 @@ handleEvent g (AppEvent Stop) = do
           then do
             g' <- liftIO $ updateGameStatus g
             M.continue g'
-          else M.continue $ clearBlock g
+          else do
+            if (g ^. playedSound) then M.continue $ clearBlock (g & (playedSound .~ False))
+                                  else M.continue g -- Invalid `Stop` event.
       _ -> M.continue g
   else M.continue g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
