@@ -23,7 +23,6 @@ import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
 import Constants (restDuration, stimulusDuration)
 import Control.Concurrent (forkIO, threadDelay)
-import Control.Concurrent.STM (TVar, atomically, newTVar, readTVarIO, writeTVar)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson
@@ -248,43 +247,35 @@ handleEvent g (VtyEvent (V.EvKey (V.KChar 'c') [])) = cancelTrial g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'u') [])) = M.continue $ increaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'd') [])) = M.continue $ decreaseLevel g
 handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
-  liftIO $ atomically $ writeTVar (g ^. playing) True
   g' <-
     liftIO $
       createGame
-        (g ^. playing)
         (g ^. statsFile)
         (g ^. level)
         (g ^. trials)
   M.continue $ startTrial g'
 handleEvent g (AppEvent Play) = do
-  isPlaying <- liftIO $ readTVarIO (g ^. playing)
-  if isPlaying then
-    case g ^. screen of
-      GameScreen ->
-        if g ^. end
-          then do
-            g' <- liftIO $ updateGameStatus g
-            M.continue g'
-          else do
-            void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
-            M.continue $ showNextBlock (g & (playedSound .~ True))
-      _ -> M.continue g
-   else M.continue g
+  case g ^. screen of
+    GameScreen ->
+      if g ^. end
+        then do
+          g' <- liftIO $ updateGameStatus g
+          M.continue g'
+        else do
+          void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
+          M.continue $ showNextBlock (g & (playedSound .~ True))
+    _ -> M.continue g
 handleEvent g (AppEvent Stop) = do
-  isPlaying <- liftIO $ readTVarIO (g ^. playing)
-  if isPlaying then
-    case g ^. screen of
-      GameScreen ->
-        if g ^. end
-          then do
-            g' <- liftIO $ updateGameStatus g
-            M.continue g'
-          else
-            if g ^. playedSound then M.continue $ clearBlock (g & (playedSound .~ False))
-                                else M.continue g -- Invalid `Stop` event.
-      _ -> M.continue g
-  else M.continue g
+  case g ^. screen of
+    GameScreen ->
+      if g ^. end
+        then do
+          g' <- liftIO $ updateGameStatus g
+          M.continue g'
+        else
+          if g ^. playedSound then M.continue $ clearBlock (g & (playedSound .~ False))
+                              else M.continue g -- Invalid `Stop` event.
+    _ -> M.continue g
 handleEvent g (VtyEvent (V.EvKey (V.KChar 'q') [])) = M.halt g
 handleEvent g (VtyEvent (V.EvKey V.KEsc [])) = M.halt g
 handleEvent g _ = M.continue g
@@ -292,7 +283,6 @@ handleEvent g _ = M.continue g
 -- | Cancel the current trial and move to the main menu.
 cancelTrial :: Game -> T.EventM n (T.Next Game)
 cancelTrial g = do
-  liftIO $ atomically $ writeTVar (g ^. playing) False
   M.continue $
     case g ^. screen of
       GameScreen ->
@@ -476,31 +466,25 @@ opts defDataPath =
         <> Opt.header ("nback :: v" <> showVersion version)
     )
 
-playLoop :: TVar Bool -> BChan ClockEvent -> IO ()
-playLoop hasStartedVar chan = do
-  isPlaying <- readTVarIO hasStartedVar
-  if isPlaying
-    then do
-      writeBChan chan Play
-      threadDelay $ stimulusDuration * 1000
-      writeBChan chan Stop
-      threadDelay $ restDuration * 1000
-    else threadDelay 100000
+playLoop :: BChan ClockEvent -> IO ()
+playLoop chan = do
+  writeBChan chan Play
+  threadDelay $ stimulusDuration * 1000
+  writeBChan chan Stop
+  threadDelay $ restDuration * 1000
   
 main :: IO ()
 main = do
   defDataPath <- getXdgDirectory XdgData "nback"
   createDirectoryIfMissing True defDataPath
   parsedOpts <- Opt.execParser (opts (defDataPath <> "/trials.log"))
-  hasStarted <- atomically $ newTVar False
   chan       <- newBChan 1
   gameState <-
     createGame
-      hasStarted
       (optFile parsedOpts)
       (optLevel parsedOpts)
       (optTrials parsedOpts)
   let buildVty = Graphics.Vty.mkVty Graphics.Vty.defaultConfig
   initialVty <- buildVty
-  void $ forkIO $ forever $ playLoop hasStarted chan
+  void $ forkIO $ forever $ playLoop chan
   M.customMain initialVty buildVty (Just chan) app gameState >> pure ()

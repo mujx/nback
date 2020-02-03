@@ -42,7 +42,6 @@ import System.Directory (doesPathExist)
 import qualified System.IO.Strict as S
 import System.Random (newStdGen, randomRIO)
 import System.Random.Shuffle (shuffle')
-import Control.Concurrent.STM (TVar)
 
 data Answer
   = AuditoryMatch
@@ -203,8 +202,6 @@ data Game
         _stats :: [StatsLine],
         -- | Trials per session.
         _trials :: Int,
-        -- | Indicate whiter the play/stop signal should be emitted.
-        _playing :: TVar Bool,
         -- | Whether the `Play` step was executed succefully.
         -- This guards against the presence of an invalid `Stop` state without a `Play` event.
         _playedSound :: Bool
@@ -404,8 +401,8 @@ checkStatsFile f = do
     else pure ()
 
 -- | Initialize the game state.
-createGame :: TVar Bool -> FilePath -> Int -> Int -> IO Game
-createGame isPlaying f lvl minTrials = do
+createGame :: FilePath -> Int -> Int -> IO Game
+createGame f lvl minTrials = do
   statsData <- readStatsFile f minTrials
   seqs <- generateSeqs lvl
   return $ Game
@@ -423,6 +420,5 @@ createGame isPlaying f lvl minTrials = do
       _statsFile  = f,
       _stats      = statsData,
       _trials     = minTrials,
-      _playing    = isPlaying,
       _playedSound = False
     }

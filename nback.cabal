@@ -30,7 +30,6 @@ executable nback
                      , optparse-applicative
                      , time
                      , vty
-                     , stm
 
   ghc-options:         -Wall
                        -Wno-type-defaults
@@ -76,7 +75,6 @@ library
                      , text
                      , time
                      , vty
-                     , stm
 
 
   ghc-options:         -Wall
