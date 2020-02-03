@@ -7,10 +7,16 @@ Implementation of the n-back game with a terminal UI.
 
 ### Installation
 
-Install [stack](https://docs.haskellstack.org/en/stable/README/) and run the following
+Using stack
 
 ```bash
 stack install
+```
+
+Using nix
+
+```bash
+make install
 ```
 
 ### Controls
