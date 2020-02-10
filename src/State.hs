@@ -36,8 +36,6 @@ import qualified Data.Map.Strict as Map
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import GHC.Generics
-import Lens.Micro
-import Lens.Micro.TH (makeLenses)
 import System.Directory (doesPathExist)
 import qualified System.IO.Strict as S
 import System.Random (newStdGen, randomRIO)
@@ -207,8 +205,6 @@ data Game
         _playedSound :: Bool
       }
 
-makeLenses ''Game
-
 compareAnswers ::
   Maybe Answer ->
   -- | ^ The correct answer.
@@ -248,8 +244,8 @@ compareAnswers correct guess = case (correct, guess) of
 getMistakes :: Game -> MistakeReport
 getMistakes g = findMistakes correctAnswers guesses
   where
-    correctAnswers = findAnswers (g ^. level) (g ^. visuals) (g ^. auditory)
-    guesses = Map.elems $ g ^. answers
+    correctAnswers = findAnswers (_level g) (_visuals g) (_auditory g)
+    guesses        = Map.elems (_answers g)
 
 findMistakes :: [Maybe Answer] -> [Maybe Answer] -> MistakeReport
 findMistakes ans guess = mconcat $ zipWith compareAnswers ans guess

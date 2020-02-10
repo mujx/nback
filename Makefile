@@ -17,7 +17,7 @@ clean:
 	git clean -xdf
 
 hlint:
-	@hlint -q app && hlint -q ./test && hlint -q src
+	@hlint app && hlint ./test && hlint src
 
 fmt:
 	ormolu -m inplace ./**/*.hs

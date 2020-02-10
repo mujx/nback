@@ -7,7 +7,7 @@ module Audio
   )
 where
 
-import Control.Concurrent
+import Control.Concurrent (threadDelay)
 import Control.Monad (unless, when)
 import qualified Data.ByteString as Bs
 import Data.FileEmbed

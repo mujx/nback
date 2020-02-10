@@ -67,7 +67,6 @@ library
                      , directory
                      , file-embed
                      , microlens
-                     , microlens-th
                      , proteaaudio
                      , random
                      , random-shuffle

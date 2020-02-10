@@ -254,7 +254,7 @@ handleEvent g (VtyEvent (V.EvKey (V.KChar ' ') [])) = do
         (g ^. level)
         (g ^. trials)
   M.continue $ startTrial g'
-handleEvent g (AppEvent Play) = do
+handleEvent g (AppEvent Play) =
   case g ^. screen of
     GameScreen ->
       if g ^. end
@@ -265,7 +265,7 @@ handleEvent g (AppEvent Play) = do
           void $ liftIO $ forkIO $ when (hasEnoughBlocks g) (playRandomSound g)
           M.continue $ showNextBlock (g & (playedSound .~ True))
     _ -> M.continue g
-handleEvent g (AppEvent Stop) = do
+handleEvent g (AppEvent Stop) =
   case g ^. screen of
     GameScreen ->
       if g ^. end
@@ -282,7 +282,7 @@ handleEvent g _ = M.continue g
 
 -- | Cancel the current trial and move to the main menu.
 cancelTrial :: Game -> T.EventM n (T.Next Game)
-cancelTrial g = do
+cancelTrial g =
   M.continue $
     case g ^. screen of
       GameScreen ->

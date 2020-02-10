@@ -12,8 +12,8 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     aeson base brick bytestring Chart Chart-diagrams colour containers
-    data-default-class directory file-embed microlens microlens-th
-    proteaaudio random random-shuffle strict text time vty
+    data-default-class directory file-embed microlens proteaaudio
+    random random-shuffle strict text time vty
   ];
   executableHaskellDepends = [
     aeson base brick bytestring containers directory microlens
