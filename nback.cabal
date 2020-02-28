@@ -15,23 +15,38 @@ tested-with:         GHC == 8.6.5
 
 executable nback
   hs-source-dirs:      app
-  other-modules:       Paths_nback
+                     , src
+  other-modules:       State
+                     , Constants
+                     , Audio
+                     , Chart
+                     , Paths_nback
   main-is:             Main.hs
 
   build-depends:       base ^>= 4.12.0.0
+                     , Chart
+                     , Chart-diagrams
                      , aeson
                      , brick
                      , bytestring
+                     , colour
                      , containers
+                     , data-default-class
                      , directory
+                     , file-embed
                      , microlens
                      , microlens-th
-                     , nback
                      , optparse-applicative
+                     , proteaaudio
+                     , random
+                     , random-shuffle
+                     , strict
+                     , text
                      , time
                      , vty
 
   ghc-options:         -Wall
+                       -O2
                        -Wno-type-defaults
                        -threaded
                        -rtsopts
@@ -47,58 +62,29 @@ executable nback
 
   default-language:    Haskell2010
 
-library
-  hs-source-dirs:      src
-  exposed-modules:
-                       State
-                     , Constants
-                     , Audio
-                     , Chart
-
-  build-depends:       base ^>= 4.12.0.0
-                     , aeson
-                     , brick
-                     , bytestring
-                     , Chart
-                     , Chart-diagrams
-                     , colour
-                     , containers
-                     , data-default-class
-                     , directory
-                     , file-embed
-                     , microlens
-                     , proteaaudio
-                     , random
-                     , random-shuffle
-                     , strict
-                     , text
-                     , time
-                     , vty
-
-
-  ghc-options:         -Wall
-                       -Wincomplete-uni-patterns
-                       -Wincomplete-record-updates
-                       -Wcompat
-                       -Widentities
-                       -Wredundant-constraints
-                       -fhide-source-paths
-                       -Wmissing-export-lists
-                       -Wpartial-fields
-
-  default-language:    Haskell2010
-
 
 test-suite nback-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
+                     , src
   main-is:             Spec.hs
+  other-modules:       State
+                     , Audio
+                     , Constants
 
   build-depends:       base ^>= 4.12.0.0
-                     , nback
                      , tasty
+                     , aeson
+                     , time
+                     , directory
+                     , strict
+                     , random
+                     , random-shuffle
                      , tasty-hunit
                      , containers
+                     , bytestring
+                     , file-embed
+                     , proteaaudio
 
   ghc-options:         -Wall
                        -threaded

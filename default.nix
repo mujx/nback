@@ -8,18 +8,18 @@ mkDerivation {
   pname = "nback";
   version = "0.1.0";
   src = ./.;
-  isLibrary = true;
+  isLibrary = false;
   isExecutable = true;
-  libraryHaskellDepends = [
-    aeson base brick bytestring Chart Chart-diagrams colour containers
-    data-default-class directory file-embed microlens proteaaudio
-    random random-shuffle strict text time vty
-  ];
   executableHaskellDepends = [
-    aeson base brick bytestring containers directory microlens
-    microlens-th optparse-applicative time vty
+    aeson base brick bytestring Chart Chart-diagrams colour containers
+    data-default-class directory file-embed microlens microlens-th
+    optparse-applicative proteaaudio random random-shuffle strict text
+    time vty
   ];
-  testHaskellDepends = [ base containers tasty tasty-hunit ];
+  testHaskellDepends = [
+    aeson base bytestring containers directory file-embed proteaaudio
+    random random-shuffle strict tasty tasty-hunit time
+  ];
   doHaddock = false;
   doCheck = false;
   description = "See README for more info";
