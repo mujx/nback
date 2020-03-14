@@ -21,7 +21,7 @@ import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Core as Core
 import Chart (mkChart)
-import Constants (restDuration, stimulusDuration)
+import Constants (restDuration, stimulusDuration, numTrials)
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Monad (forever, void, when)
 import Control.Monad.IO.Class (liftIO)
@@ -117,13 +117,27 @@ pastTrials g =
     then Core.txt ""
     else
       C.hCenter $ Core.withBorderStyle BS.unicodeBold
-        $ B.borderWithLabel (Core.str (" Today's trials (" <> borderLabel <> ") "))
+        $ B.borderWithLabel
+          ( Core.str (" Today's trials (" <> borderLabel <> totalTime (g ^. stats) <> ") ")
+          )
         $ Core.padAll 1
         $ Core.vBox
           [ Core.padTopBottom 1 $
               Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
           ]
   where
+    totalTime [] = ""
+    totalTime ls =
+      "- "
+        <> show
+          ( sum $
+              map
+                ( \l -> numTrials (statsLevel l) * (restDuration + stimulusDuration) `div` 60000
+                )
+                ls
+          )
+        <> " minutes "
+
     borderLabel = case length (g ^. stats) of
       x
         | x > 0 ->
