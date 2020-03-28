@@ -7,6 +7,7 @@ module Main
 where
 
 import Audio (playSound)
+import Text.Printf (printf)
 import qualified Brick.AttrMap as A
 import Brick.BChan (BChan, newBChan, writeBChan)
 import qualified Brick.Main as M
@@ -126,17 +127,22 @@ pastTrials g =
               Core.vBox [Core.withAttr (lineColor v) $ stat v | v <- g ^. stats]
           ]
   where
+
     totalTime [] = ""
     totalTime ls =
       "- "
-        <> show
+        <> printf
+          "%.f"
           ( sum $
               map
-                ( \l -> numTrials (statsLevel l) * (restDuration + stimulusDuration) `div` 60000
+                ( \l -> toMinutes (statsLevel l) (restDuration + stimulusDuration)
                 )
                 ls
           )
         <> " minutes "
+
+    toMinutes :: Int -> Int -> Double
+    toMinutes lvl duration = fromIntegral (numTrials lvl * duration) / 60000
 
     borderLabel = case length (g ^. stats) of
       x
