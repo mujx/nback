@@ -23,5 +23,5 @@ mkDerivation {
   doHaddock = false;
   doCheck = false;
   description = "See README for more info";
-  license = stdenv.lib.licenses.mit;
+  license = stdenv.lib.licenses.unlicense;
 }

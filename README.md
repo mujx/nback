@@ -1,7 +1,7 @@
 # nback
 
 [![CircleCI](https://circleci.com/gh/mujx/nback.svg?style=svg)](https://circleci.com/gh/mujx/nback)
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 
 Implementation of the n-back game with a terminal UI.
 

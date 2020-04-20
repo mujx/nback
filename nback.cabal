@@ -3,8 +3,8 @@ name:                nback
 version:             0.1.0
 synopsis:            See README for more info
 description:         See README for more info
-license:             MIT
-license-file:        LICENSE
+license:             UNLICENSE
+license-file:        UNLICENSE
 author:              Konstantinos Sideris
 maintainer:          siderisk@auth.gr
 copyright:           2019 Konstantinos Sideris
